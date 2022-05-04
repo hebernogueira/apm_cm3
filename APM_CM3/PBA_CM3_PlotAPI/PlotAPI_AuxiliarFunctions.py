@@ -289,4 +289,13 @@ def plot_texts(plant='default',machine='default', condition_id='',coil_id='',all
 
 # COMMAND ----------
 
+def plot_chart_from_json(json_plot =''):
+  import plotly.graph_objects as go
+  from plotly.subplots import make_subplots
+  import plotly.io as pio
+  fig = pio.from_json(json_plot)
+  return fig
+
+# COMMAND ----------
+
 
