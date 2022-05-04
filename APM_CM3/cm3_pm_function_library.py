@@ -43,7 +43,10 @@ bool_ops = {
 
 aggreg_ops = {'max': 'max',
               'avg': 'mean',
-              'min': 'min'
+              'mean':'mean',
+              'min': 'min',
+              'std': 'std',
+              'stddev':'std'
 }
 
 # COMMAND ----------
@@ -199,10 +202,6 @@ def get_edges(df, target, threshold, op, index):
     edges['range'] = edges[index].diff().shift(-1)
 
     return edges
-
-# COMMAND ----------
-
-
 
 # COMMAND ----------
 
@@ -520,6 +519,80 @@ def evaluate_parts(pdf, sig, args):
                            stddev_base = 0
                           )
     return alarm,stats_dict 
+
+# COMMAND ----------
+
+def threshold_compare_mod(pdf, sig, args):
+  if args['trimmer']['trim_needed'].capitalize()=='True':
+    pdf['trim'] = generate_boolean_series(df = pdf, 
+                                      cols = args['trimmer']['trim_sig'], 
+                                      operators= args['trimmer']['trim_op'],
+                                      thresholds = args['trimmer']['trim_thr'],
+                                      logic_operation=args['trimmer']['trim_logic_op'],
+                                      offset_needed= args['trimmer']['trim_offset_needed'],
+                                      offset_start_sec = args['trimmer']['trim_offset_start'], 
+                                      offset_end_sec = args['trimmer']['trim_offset_end'], 
+                                      sample_time_ms = 1)
+    pdf = pdf[pdf['trim']==True]
+    #pdf['res'] = pdf['sig']
+    
+    
+    if args['how'] == 'any':
+        alarm = (rel_ops[args['cond_par']['cond_op'][0]](pdf[sig],args['cond_par']['cond_thresholds']['threshold'])).any()
+    else:
+        alarm = (rel_ops[args['cond_par']['cond_op'][0]](pdf[sig],args['cond_par']['cond_thresholds']['threshold'])).all()
+    
+    stats_dict = {'thresholds': [args['cond_par']['cond_thresholds']['threshold']], 
+                     'min': 0,'max': 0, 'mean': 0, 'median': 0, 'std': 0,'mape': 0, 'zscore': 0}
+  
+    return alarm,stats_dict
+
+
+# COMMAND ----------
+
+def fe_threshold_compare_mod(pdf, sig, args):
+    ''' Count edges on boolean signal or integer 0,1 signals
+    
+    -------------------------------------------------------------------------------------------------------------
+    eg: Generating a pulse signal and measuring the duration in bool state true
+    import pandas as pd
+    df = pd.DataFrame(np.random.rand(30,2)*np.random.randint(1,10), columns=['signal0','signal1'])
+    df['trimmer_sig'] = [0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]
+
+    arguments = { 
+                  "cond_par": {"cond_thresholds": {"thr1": 1,"thr2": 1},"cond_op": [">",">"],"cond_seq": ["std","min"],"cond_logic_op":["|"]},
+                  "trimmer": { "trim_needed": "true","trim_sig":["trimmer_sig"], "trim_thr":[1], "trim_op":["=="],"trim_logic_op":["&"], "trim_offset_needed": "false"},
+                 }
+    al, res = fe_threshold_compare_mod(pdf = df,sig=['signal0','signal1'],args = arguments)
+    
+    '''
+    if args['trimmer']['trim_needed'].capitalize()=='True':
+      pdf['trim'] = generate_boolean_series(df = pdf, 
+                                            cols = args['trimmer']['trim_sig'], 
+                                            operators= args['trimmer']['trim_op'],
+                                            thresholds = args['trimmer']['trim_thr'],
+                                            logic_operation=args['trimmer']['trim_logic_op'],
+                                            offset_needed= args['trimmer']['trim_offset_needed'] )
+      pdf = pdf[pdf['trim']==True]
+   
+    print(sig[0])
+            
+    try:
+        agg_list = [aggreg_ops[i.lower()] for i in args['cond_par']['cond_seq']]
+        agg_dict = {k:v for k,v in zip(sig,agg_list)}
+        pdf_agg = pdf.groupby('trim').agg(agg_dict).reset_index(drop=True)#drop(columns=['trim'])
+    except:
+        print('Internal Error')
+    
+    alarm = rel_ops[args['cond_par']['cond_logic_op'][0]](
+             (rel_ops[args['cond_par']['cond_op'][0]](pdf_agg[sig[0]], args['cond_par']['cond_thresholds']['thr1'])),
+             (rel_ops[args['cond_par']['cond_op'][1]](pdf_agg[sig[1]], args['cond_par']['cond_thresholds']['thr2']))
+           ).any()
+    stats_dict = {'thresholds': [args['cond_par']['cond_thresholds']['thr1'], args['cond_par']['cond_thresholds']['thr2']], 
+                     'min': 0,'max': 0, 'mean': 0, 'median': 0, 'std': 0,'mape': 0, 'zscore': 0}
+            
+    print(pdf_agg)
+    return alarm,stats_dict
 
 # COMMAND ----------
 
