@@ -1,6 +1,6 @@
 # Databricks notebook source
 rule = '''{
-"variation_pressure": {
+"pressure_flow_variation": {
 					"rule_type":"independent",
 					"display": "no",
 					"function": "fe_threshold_compare_mod", 
@@ -12,12 +12,12 @@ rule = '''{
 											   "trim_op": ["==","=="],
 											   "trim_thr":[2,5],
 											   "trim_logic_op": ["and"],
-											   "trim_offset_needed": "false",
-											   "trim_offset_start_sec" : 5,
-											   "trim_offset_end_sec" : 5,
+											   "trim_offset_needed": "true",
+											   "trim_offset_start_sec" : 60,
+											   "trim_offset_end_sec" : 60,
 											   "sample_time_ms": 1
 												},
-									"cond_par":{"cond_thresholds": {"thr1": 45,"thr2": 0.05},
+									"cond_par":{"cond_thresholds": {"thr1": 40,"thr2": 0.05},
                                                  "cond_op": [">",">"],
                                                  "cond_seq": ["std","std"],
                                                  "cond_op": [">",">"],
